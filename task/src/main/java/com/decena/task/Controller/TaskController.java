@@ -28,57 +28,76 @@ public class TaskController {
 
     private final TaskService taskService;
 
-    // CREATE
+    /**
+     * Creates a new task.
+     */
     @PostMapping
     public ResponseEntity<TaskResponse> createTask(@Valid @RequestBody TaskRequest request) {
-        TaskResponse response = taskService.createTask(request);
-        return ResponseEntity.status(201).body(response); // 201 Created
+        return ResponseEntity.status(201).body(taskService.createTask(request));
     }
 
-    // READ ALL WITH PAGINATION
+    /**
+     * Retrieves all active tasks with pagination.
+     */
     @GetMapping
     public ResponseEntity<List<TaskResponse>> getAllTasks(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        List<TaskResponse> tasks = taskService.getAllTasks(page, size);
-        return ResponseEntity.ok(tasks);
+        return ResponseEntity.ok(
+                taskService.getAllTasks(page, size)
+        );
     }
 
-    // READ ONE BY ID
+    /**
+     * Retrieves a single task by ID.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<TaskResponse> getTaskById(@PathVariable Long id) {
-        TaskResponse response = taskService.getTaskById(id); // Throws ResourceNotFoundException if not found
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                taskService.getTaskById(id)
+        );
     }
 
-    // UPDATE
+    /**
+     * Updates a task.
+     */
     @PutMapping("/{id}")
     public ResponseEntity<TaskResponse> updateTask(
             @PathVariable Long id,
             @Valid @RequestBody TaskRequest request) {
-        TaskResponse response = taskService.updateTask(id, request); // Throws ResourceNotFoundException if not found
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                taskService.updateTask(id, request)
+        );
     }
 
-    // DELETE
+    /**
+     * Soft deletes a task.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
-        taskService.deleteTask(id); // Throws ResourceNotFoundException if not found
-        return ResponseEntity.noContent().build(); // 204 No Content
+        taskService.deleteTask(id);
+        return ResponseEntity.noContent().build();
     }
 
-    // MARK AS COMPLETED
+    /**
+     * Marks a task as completed.
+     */
     @PatchMapping("/{id}/complete")
     public ResponseEntity<TaskResponse> markTaskAsCompleted(@PathVariable Long id) {
-        TaskResponse response = taskService.markTaskAsCompleted(id); // Throws ResourceNotFoundException if not found
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                taskService.markTaskAsCompleted(id)
+        );
     }
 
+    /**
+     * Retrieves deleted tasks.
+     */
     @GetMapping("/deleted")
-public ResponseEntity<List<TaskResponse>> getDeletedTasks(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size) {
-    List<TaskResponse> tasks = taskService.getDeletedTasks(page, size);
-    return ResponseEntity.ok(tasks);
-}
+    public ResponseEntity<List<TaskResponse>> getDeletedTasks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(
+                taskService.getDeletedTasks(page, size)
+        );
+    }
 }

@@ -29,39 +29,35 @@ public class TaskServiceImpl implements TaskService {
      */
     @Override
     public TaskResponse createTask(TaskRequest request) {
-        Task task = taskMapper.toEntity(request);
-        Task saved = taskRepository.save(task);
-        return taskMapper.toResponse(saved);
+        return taskMapper.toResponse(
+                taskRepository.save(taskMapper.toEntity(request))
+        );
     }
 
     /**
-     * Retrieves all non-deleted tasks with pagination.
+     * Retrieves all active (not deleted) tasks.
      */
     @Override
-public List<TaskResponse> getAllTasks(int page, int size) {
-    Pageable pageable = PageRequest.of(page, size);
-    return taskRepository.findByDeletedFalse(pageable)
-            .stream()
-            .map(taskMapper::toResponse)
-            .collect(Collectors.toList());
-}
-
-@Override
-public TaskResponse getTaskById(Long id) {
-    Task task = taskRepository.findByIdAndDeletedFalse(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
-    return taskMapper.toResponse(task);
-}
+    public List<TaskResponse> getAllTasks(int page, int size) {
+        return taskRepository.findByDeletedFalse(PageRequest.of(page, size))
+                .map(taskMapper::toResponse)
+                .toList();
+    }
 
     /**
-     * Updates a non-deleted task.
+     * Retrieves one active task by ID.
+     */
+    @Override
+    public TaskResponse getTaskById(Long id) {
+        return taskMapper.toResponse(findActiveTask(id));
+    }
+
+    /**
+     * Updates an active task.
      */
     @Override
     public TaskResponse updateTask(Long id, TaskRequest request) {
-        Task task = taskRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Task not found with id: " + id));
-
+        Task task = findActiveTask(id);
         taskMapper.updateEntity(request, task);
         return taskMapper.toResponse(taskRepository.save(task));
     }
@@ -70,39 +66,40 @@ public TaskResponse getTaskById(Long id) {
      * Soft deletes a task.
      */
     @Override
-public void deleteTask(Long id) {
-    // Optional: short-circuit if task is already deleted
-    if (!taskRepository.existsByIdAndDeletedFalse(id)) {
-        throw new ResourceNotFoundException("Task not found or already deleted");
+    public void deleteTask(Long id) {
+        Task task = findActiveTask(id);
+        task.setDeleted(true);
+        taskRepository.save(task);
     }
 
-    // Fetch the task to mark deleted
-    Task task = taskRepository.findByIdAndDeletedFalse(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
-
-    task.setDeleted(true);
-    taskRepository.save(task);
-}
-
     /**
-     * Marks a task as completed.
+     * Marks task as completed.
      */
     @Override
     public TaskResponse markTaskAsCompleted(Long id) {
-        Task task = taskRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Task not found with id: " + id));
-
+        Task task = findActiveTask(id);
         task.setStatus(Task.Status.COMPLETED);
         return taskMapper.toResponse(taskRepository.save(task));
     }
 
+    /**
+     * Retrieves deleted tasks.
+     */
     @Override
-public List<TaskResponse> getDeletedTasks(int page, int size) {
-    Pageable pageable = PageRequest.of(page, size);
-    return taskRepository.findAllByDeletedTrue(pageable)
-            .stream()
-            .map(taskMapper::toResponse)
-            .collect(Collectors.toList());
-}
+    public List<TaskResponse> getDeletedTasks(int page, int size) {
+        return taskRepository.findAllByDeletedTrue(PageRequest.of(page, size))
+                .map(taskMapper::toResponse)
+                .toList();
+    }
+
+    // ================= HELPER METHOD =================
+
+    /**
+     * Finds active (non-deleted) task or throws exception.
+     */
+    private Task findActiveTask(Long id) {
+        return taskRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found with id: " + id));
+    }
 }
