@@ -2,6 +2,8 @@ package com.decena.task.Entity;
 
 import java.time.LocalDateTime;
 
+import com.decena.task.Exception.TaskAlreadyCompletedException;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -89,6 +91,18 @@ public void prePersist() {
     if (this.status == null) this.status = Status.PENDING;
     if (this.priority == null) this.priority = Priority.LOW; // safe default
     this.deleted = false;
+}
+
+
+/**
+     * Marks the task as completed if not already completed.
+     * @return true if the status was changed, false if already completed
+     */
+    public void markAsCompleted() {
+    if (this.status == Status.COMPLETED) {
+        throw new TaskAlreadyCompletedException("Task is already completed");
+    }
+    this.status = Status.COMPLETED;
 }
 
     /**

@@ -36,6 +36,7 @@ public class TaskMapper {
                 ? Task.Status.valueOf(request.getStatus())
                 : Task.Status.PENDING;
 
+                // creates new Task entity object using the values of TaskRequest
         return Task.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
