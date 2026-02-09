@@ -1,7 +1,10 @@
 package com.decena.task.Controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -74,10 +77,15 @@ public class TaskController {
      * Soft deletes a task.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
-        taskService.deleteTask(id);
-        return ResponseEntity.noContent().build();
-    }
+    public ResponseEntity<Map<String, Object>> deleteTask(@PathVariable Long id) {
+    taskService.deleteTask(id);
+
+    Map<String, Object> response = new HashMap<>();
+    response.put("status", HttpStatus.OK.value());
+    response.put("message", "Task successfully deleted");
+
+    return ResponseEntity.ok(response);
+}
 
     /**
      * Marks a task as completed.

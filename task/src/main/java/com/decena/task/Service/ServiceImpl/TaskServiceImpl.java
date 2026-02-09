@@ -10,6 +10,7 @@ import com.decena.task.Dto.TaskRequest;
 import com.decena.task.Dto.TaskResponse;
 import com.decena.task.Entity.Task;
 import com.decena.task.Exception.ResourceNotFoundException;
+import com.decena.task.Exception.TaskAlreadyDeletedException;
 import com.decena.task.Mapper.TaskMapper;
 import com.decena.task.Repository.TaskRepository;
 import com.decena.task.Service.TaskService;
@@ -48,7 +49,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional(readOnly = true)
     public List<TaskResponse> getAllTasks(int page, int size) {
         return taskRepository.findByDeletedFalse(PageRequest.of(page, size))
-                .map(taskMapper::toResponse)
+                .map(taskMapper::toResponse) 
                 .toList();
     }
 
@@ -87,10 +88,17 @@ public class TaskServiceImpl implements TaskService {
      */
     @Override
     public void deleteTask(Long id) {
-        Task task = findActiveTask(id);
-        task.setDeleted(true);
-        taskRepository.save(task);
+
+    Task task = taskRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
+
+    if (task.isDeleted()) {
+        throw new TaskAlreadyDeletedException("Task already successfully deleted");
     }
+
+    task.setDeleted(true);
+    taskRepository.save(task);
+}
 
     /**
      * Marks a task as completed.
