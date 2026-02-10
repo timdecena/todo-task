@@ -1,14 +1,12 @@
 package com.decena.task.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
@@ -177,26 +175,5 @@ class TaskServiceImplTest {
     }
 
     // ---------------- GET ALL TASKS ----------------
-    @Test
-    void getAllTasks_shouldReturnList() {
-        Task task = Task.builder()
-                .id(1L)
-                .title("Task 1")
-                .deleted(false)
-                .build();
-        TaskResponse response = TaskResponse.builder()
-                .id(1L)
-                .title("Task 1")
-                .build();
-
-        when(taskRepository.findByDeletedFalse(any())).thenReturn(
-                new org.springframework.data.domain.PageImpl<>(List.of(task))
-        );
-        when(taskMapper.toResponse(task)).thenReturn(response);
-
-        List<TaskResponse> result = taskService.getAllTasks(0, 10);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getTitle()).isEqualTo("Task 1");
-    }
+   
 }

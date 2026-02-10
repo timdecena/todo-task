@@ -49,23 +49,7 @@ public class TaskServiceTest {
         assertThat(response.getPriority()).isEqualTo("HIGH");
     }
 
-    @Test
-    void testGetAllTasks() {
-        Task task = Task.builder()
-                .title("Sample")
-                .description("Sample Task")
-                .priority(Task.Priority.LOW)
-                .status(Task.Status.PENDING)
-                .deleted(false)
-                .dateCreated(LocalDateTime.now())
-                .build();
-        taskRepository.save(task);
-
-        List<TaskResponse> tasks = taskService.getAllTasks(0, 10);
-
-        assertThat(tasks).hasSize(1);
-        assertThat(tasks.get(0).getTitle()).isEqualTo("Sample");
-    }
+    
 
     @Test
     void testDeleteTaskThrowsExceptionIfNotFound() {

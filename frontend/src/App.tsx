@@ -1,8 +1,8 @@
 import React from 'react';
-import TaskPage from './pages/TaskPage';
+import AppRoutes from './routes/AppRoutes';
 
 const App: React.FC = () => {
-  return <TaskPage />;
+  return <AppRoutes />;
 };
 
 export default App;

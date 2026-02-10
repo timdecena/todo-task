@@ -8,7 +8,7 @@ import com.decena.task.Dto.TaskResponse;
 public interface TaskService {
     TaskResponse createTask(TaskRequest request);
     TaskResponse getTaskById(Long id);
-    List<TaskResponse> getAllTasks(int page, int size);
+    List<TaskResponse> getAllTasks(int page, int size, String sortBy, String sortDir);
     TaskResponse updateTask(Long id, TaskRequest request);
     void deleteTask(Long id);
     TaskResponse markTaskAsCompleted(Long id);

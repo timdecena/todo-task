@@ -2,7 +2,7 @@ export type TaskRequest = {
   title: string;
   description?: string;
   priority?: "HIGH" | "MODERATE" | "LOW";
-  status?: "ACTIVE" | "COMPLETED"; // <-- match backend
+  status?: "PENDING" | "COMPLETED"; // match backend
   deadline?: string;
 };
 
@@ -14,4 +14,12 @@ export interface TaskResponse {
     status?: string;
     deadline?: string;
     dateCreated?: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
 }

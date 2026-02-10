@@ -189,4 +189,32 @@ public class Task {
         PENDING,
         COMPLETED
     }
+
+     /**
+     * Updates deadline with validation.
+     * Deadline must NOT be in the past and must NOT be before dateCreated.
+     *
+     * @param newDeadline the new deadline value (nullable)
+     * @throws IllegalArgumentException if deadline is in the past or before dateCreated
+     */
+    public void updateDeadline(LocalDateTime newDeadline) {
+
+        if (newDeadline == null) {
+            this.deadline = null;
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (newDeadline.isBefore(now)) {
+            throw new IllegalArgumentException("Deadline must not be in the past");
+        }
+
+        // If dateCreated is already set, enforce deadline >= dateCreated
+        if (this.dateCreated != null && newDeadline.isBefore(this.dateCreated)) {
+            throw new IllegalArgumentException("Deadline must not be before date created");
+        }
+
+        this.deadline = newDeadline;
+    }
 }

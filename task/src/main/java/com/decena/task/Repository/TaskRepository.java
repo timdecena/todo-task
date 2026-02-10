@@ -17,6 +17,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     Page<Task> findByDeletedFalse(Pageable pageable);
 
+
     /**
      * Fetch a non-deleted task by ID.
      */
@@ -28,5 +29,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     boolean existsByIdAndDeletedFalse(Long id);
 
     Page<Task> findAllByDeletedTrue(Pageable pageable);
+
+    Page<Task> findByDeletedTrue(Pageable pageable);
 
 }

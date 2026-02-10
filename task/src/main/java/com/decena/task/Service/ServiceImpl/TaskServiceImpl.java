@@ -1,8 +1,11 @@
 package com.decena.task.Service.ServiceImpl;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,12 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse createTask(TaskRequest request) {
         Task entity = taskMapper.toEntity(request);
+        // Ensure dateCreated exists before validating deadline
+        if (entity.getDateCreated() == null) {
+            entity.setDateCreated(LocalDateTime.now());
+        }
+        // Validate/set deadline (not past, not before dateCreated)
+        entity.updateDeadline(entity.getDeadline());
         Task saved = taskRepository.save(entity);
         return taskMapper.toResponse(saved);
     }
@@ -47,10 +56,21 @@ public class TaskServiceImpl implements TaskService {
      */
     @Override
     @Transactional(readOnly = true)
-    public List<TaskResponse> getAllTasks(int page, int size) {
-        return taskRepository.findByDeletedFalse(PageRequest.of(page, size))
-                .map(taskMapper::toResponse) 
-                .toList();
+    public List<TaskResponse> getAllTasks(int page, int size, String sortBy, String sortDir) {
+        // allowlist: prevents sorting by random fields (security + stability)
+        Set<String> allowedSortFields = Set.of("deadline", "priority", "status", "dateCreated");
+
+        String safeSortBy = allowedSortFields.contains(sortBy) ? sortBy : "dateCreated";
+
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, safeSortBy));
+
+        return taskRepository.findByDeletedFalse(pageable)
+                .map(taskMapper::toResponse)
+                .getContent();
     }
 
     /**
@@ -75,11 +95,17 @@ public class TaskServiceImpl implements TaskService {
      */
     @Override
     public TaskResponse updateTask(Long id, TaskRequest request) {
-    Task task = findActiveTask(id);
-    taskMapper.updateEntity(request, task);
-    Task saved = taskRepository.save(task); // 
-    return taskMapper.toResponse(saved);
-}
+        // Fetch existing non-deleted task
+        Task task = findActiveTask(id);
+        // Map updatable fields from request -> entity (excluding deadline logic)
+        taskMapper.updateEntity(request, task);
+        // Validate & update deadline explicitly (not past, not before dateCreated)
+        task.updateDeadline(request.getDeadline());
+        // Persist changes
+        Task saved = taskRepository.save(task);
+        // Convert entity -> response DTO
+        return taskMapper.toResponse(saved);
+    }
 
     /**
      * Soft deletes a task.
@@ -88,17 +114,16 @@ public class TaskServiceImpl implements TaskService {
      */
     @Override
     public void deleteTask(Long id) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
 
-    Task task = taskRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
+        if (task.isDeleted()) {
+            throw new TaskAlreadyDeletedException("Task already successfully deleted");
+        }
 
-    if (task.isDeleted()) {
-        throw new TaskAlreadyDeletedException("Task already successfully deleted");
+        task.setDeleted(true);
+        taskRepository.save(task);
     }
-
-    task.setDeleted(true);
-    taskRepository.save(task);
-}
 
     /**
      * Marks a task as completed.
@@ -108,11 +133,11 @@ public class TaskServiceImpl implements TaskService {
      */
     @Override
     public TaskResponse markTaskAsCompleted(Long id) {
-    Task task = findActiveTask(id);
-    task.markAsCompleted();         
-    Task saved = taskRepository.save(task); 
-    return taskMapper.toResponse(saved);
-}
+        Task task = findActiveTask(id);
+        task.markAsCompleted();
+        Task saved = taskRepository.save(task);
+        return taskMapper.toResponse(saved);
+    }
 
     /**
      * Retrieves deleted tasks with pagination.
@@ -126,7 +151,7 @@ public class TaskServiceImpl implements TaskService {
     public List<TaskResponse> getDeletedTasks(int page, int size) {
         return taskRepository.findAllByDeletedTrue(PageRequest.of(page, size))
                 .map(taskMapper::toResponse)
-                .toList();
+                .getContent();
     }
 
     /**

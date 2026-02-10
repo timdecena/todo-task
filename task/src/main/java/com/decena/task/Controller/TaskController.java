@@ -42,14 +42,15 @@ public class TaskController {
     /**
      * Retrieves all active tasks with pagination.
      */
-    @GetMapping
-    public ResponseEntity<List<TaskResponse>> getAllTasks(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(
-                taskService.getAllTasks(page, size)
-        );
-    }
+   @GetMapping
+public ResponseEntity<List<TaskResponse>> getAllTasks(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "dateCreated") String sortBy,
+        @RequestParam(defaultValue = "desc") String sortDir
+) {
+    return ResponseEntity.ok(taskService.getAllTasks(page, size, sortBy, sortDir));
+}
 
     /**
      * Retrieves a single task by ID.
