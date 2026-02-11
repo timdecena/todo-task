@@ -1,7 +1,11 @@
 import httpClient from '../http/httpClient';
 import { TaskRequest, TaskResponse } from '../../types/task';
 
-const API_URL = '/api/tasks';
+/*
+  This file contains all task-related API calls used by the frontend.
+  Each function maps a frontend action (create, read, update, delete, complete) to a backend endpoint.
+*/
+const TASKS_URL = '/api/tasks';
 export type TaskSortField = 'deadline' | 'priority' | 'status' | 'dateCreated';
 export type SortDir = 'asc' | 'desc';
 
@@ -12,57 +16,48 @@ export type GetTasksParams = {
   sortDir: SortDir;
 };
 
-/**
- * Get all active tasks
- */
+export type GetDeletedTasksParams = {
+  page: number; // 0-based for Spring
+  size: number;
+};
+
+// Read all active tasks (paged from backend).
 export async function getAllTasks(params: GetTasksParams): Promise<TaskResponse[]> {
-  const res = await httpClient.get<TaskResponse[]>('/api/tasks', { params });
-  return res.data;
+  const response = await httpClient.get<TaskResponse[]>(TASKS_URL, { params });
+  return response.data;
 }
 
-/**
- * Get a single task by ID
- */
+// Read one task by id.
 export const getTaskById = async (id: number): Promise<TaskResponse> => {
-  const res = await httpClient.get<TaskResponse>(`${API_URL}/${id}`);
-  return res.data;
+  const response = await httpClient.get<TaskResponse>(`${TASKS_URL}/${id}`);
+  return response.data;
 };
 
-/**
- * Create a new task
- */
+// Create task.
 export const createTask = async (task: TaskRequest): Promise<TaskResponse> => {
-  const res = await httpClient.post<TaskResponse>(`${API_URL}`, task);
-  return res.data;
+  const response = await httpClient.post<TaskResponse>(TASKS_URL, task);
+  return response.data;
 };
 
-/**
- * Update an existing task
- */
+// Update task.
 export const updateTask = async (id: number, task: TaskRequest): Promise<TaskResponse> => {
-  const res = await httpClient.put<TaskResponse>(`${API_URL}/${id}`, task);
-  return res.data;
+  const response = await httpClient.put<TaskResponse>(`${TASKS_URL}/${id}`, task);
+  return response.data;
 };
 
-/**
- * Soft delete a task
- */
+// Soft delete task.
 export const deleteTask = async (id: number): Promise<void> => {
-  await httpClient.delete(`${API_URL}/${id}`);
+  await httpClient.delete(`${TASKS_URL}/${id}`);
 };
 
-/**
- * Mark a task as completed
- */
+// Mark task complete.
 export const markTaskAsCompleted = async (id: number): Promise<TaskResponse> => {
-  const res = await httpClient.patch<TaskResponse>(`${API_URL}/${id}/complete`);
-  return res.data;
+  const response = await httpClient.patch<TaskResponse>(`${TASKS_URL}/${id}/complete`);
+  return response.data;
 };
 
-/**
- * Get deleted tasks
- */
-export const getDeletedTasks = async (): Promise<TaskResponse[]> => {
-  const res = await httpClient.get<TaskResponse[]>(`${API_URL}/deleted`);
-  return res.data;
+// Read all soft-deleted tasks (paged from backend).
+export const getDeletedTasks = async (params: GetDeletedTasksParams): Promise<TaskResponse[]> => {
+  const response = await httpClient.get<TaskResponse[]>(`${TASKS_URL}/deleted`, { params });
+  return response.data;
 };

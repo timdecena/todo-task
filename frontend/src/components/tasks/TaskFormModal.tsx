@@ -3,6 +3,10 @@ import { DatePicker, Form, Input, Modal, Select } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import type { TaskRequest } from '../../types/task';
 
+/*
+  This modal contains the form used for both creating and editing tasks.
+  It validates required fields and sends clean payload data back to the parent page.
+*/
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -18,33 +22,12 @@ type FormValues = {
   deadline: Dayjs;
 };
 
-/**
- * TaskFormModal Component
- *
- * Summary:
- * - Ant Design modal form for Create/Edit task.
- * - Required fields: title, deadline.
- * - Deadline must be in the future (ahead of current time).
- *
- * Props:
- * - open: controls visibility
- * - onClose: closes modal
- * - onSubmit: submits TaskRequest payload
- * - initialValues: optional values for edit mode
- *
- * Return:
- * - JSX.Element
- */
+// This modal handles both Create and Edit.
+// If `initialValues` exists, we are editing.
 const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues }) => {
   const [form] = Form.useForm<FormValues>();
 
-  /**
-   * Summary:
-   * - Populate or reset the form when modal opens.
-   *
-   * Return:
-   * - void
-   */
+  // Fill the form every time modal opens.
   useEffect(() => {
     if (!open) return;
 
@@ -54,7 +37,9 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
         description: initialValues.description ?? '',
         priority: initialValues.priority,
         status: initialValues.status,
-        deadline: initialValues.deadline ? dayjs(initialValues.deadline) : dayjs().add(1, 'hour'),
+        deadline: initialValues.deadline
+          ? dayjs(initialValues.deadline).second(0).millisecond(0)
+          : dayjs().add(1, 'hour').second(0).millisecond(0),
       });
     } else {
       form.resetFields();
@@ -63,21 +48,12 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
         priority: 'LOW',
         status: 'PENDING',
         // default deadline is 1 hour ahead
-        deadline: dayjs().add(1, 'hour'),
+        deadline: dayjs().add(1, 'hour').second(0).millisecond(0),
       });
     }
   }, [open, initialValues, form]);
 
-  /**
-   * Summary:
-   * - Validates form then submits payload.
-   *
-   * Return:
-   * - Promise<void>
-   *
-   * Possible exceptions:
-   * - Throws validation errors if fields invalid.
-   */
+  // Validate, then send cleaned data to parent.
   const handleOk = async (): Promise<void> => {
     const values = await form.validateFields();
 
@@ -86,35 +62,19 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
       description: values.description?.trim() || '',
       priority: values.priority,
       status: values.status,
-      deadline: values.deadline.format('YYYY-MM-DDTHH:mm:ss'),
+      deadline: values.deadline.second(0).millisecond(0).format('YYYY-MM-DDTHH:mm:ss'),
     };
 
     onSubmit(payload);
   };
 
-  /**
-   * Summary:
-   * - Disables selecting past dates/times in DatePicker.
-   *
-   * Parameters:
-   * - current: Dayjs | null
-   *
-   * Return:
-   * - boolean (true means disabled)
-   */
+  // Block dates before today.
   const disabledDate = (current: Dayjs | null): boolean => {
     if (!current) return false;
-    // disable any date before today
     return current.isBefore(dayjs().startOf('day'));
   };
 
-  /**
-   * Summary:
-   * - Validates deadline is strictly in the future.
-   *
-   * Return:
-   * - Promise<void>
-   */
+  // User must choose a time after "now".
   const validateFutureDeadline = async (_: unknown, value?: Dayjs): Promise<void> => {
     if (!value) throw new Error('Please select deadline');
     if (!value.isAfter(dayjs())) throw new Error('Deadline must be in the future');
@@ -127,7 +87,7 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
       onCancel={onClose}
       onOk={handleOk}
       okText={initialValues ? 'Update' : 'Create'}
-      destroyOnHidden 
+      destroyOnHidden
     >
       <Form<FormValues> layout="vertical" form={form}>
         <Form.Item
@@ -171,7 +131,8 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
           rules={[{ validator: validateFutureDeadline }]}
         >
           <DatePicker
-            showTime
+            showTime={{ format: 'HH:mm', minuteStep: 1, showSecond: false }}
+            format="YYYY-MM-DD HH:mm"
             className="w-full"
             disabledDate={disabledDate}
           />

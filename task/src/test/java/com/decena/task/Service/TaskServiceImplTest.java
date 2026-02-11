@@ -134,7 +134,7 @@ class TaskServiceImplTest {
                 .deleted(false)
                 .build();
 
-        when(taskRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(task));
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
         when(taskRepository.save(task)).thenReturn(task); // stub save
 
         taskService.deleteTask(1L);
@@ -145,7 +145,7 @@ class TaskServiceImplTest {
 
     @Test
     void deleteTask_shouldThrowException_whenTaskNotFound() {
-        when(taskRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.empty());
+        when(taskRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> taskService.deleteTask(1L));
     }

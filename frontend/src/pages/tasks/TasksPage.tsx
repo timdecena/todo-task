@@ -1,64 +1,70 @@
-import React, { useMemo } from 'react';
-import { Button, Card, Layout, Space, Typography, Alert } from 'antd';
+import { useMemo, useState } from 'react';
+import { Alert, Button, Card, Layout, Space, Typography } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 import TaskTable from '../../components/tasks/TaskTable';
 import TaskFormModal from '../../components/tasks/TaskFormModal';
-import type { TaskRequest, TaskResponse } from '../../types/task';
+import TaskDetailsModal from '../../components/tasks/TaskDetailsModal';
 import useTasks from '../../hooks/tasks/useTasks';
+import type { TaskRequest, TaskResponse } from '../../types/task';
 
+/*
+  This page is the main task dashboard where users can create, edit, complete, and delete tasks.
+  It composes the table and modals while reading all business actions from the `useTasks` hook.
+*/
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
-/**
- * TasksPage Component
- *
- * Summary:
- * - Full-width dashboard layout.
- * - Client-side pagination + sorting + search in table.
- * - Modal open/edit state is managed by the hook.
- *
- * Return:
- * - JSX.Element
- */
-const TasksPage: React.FC = () => {
+// Main CRUD page:
+// 1) show tasks
+// 2) open create/edit modal
+// 3) open details modal
+const TasksPage = () => {
   const {
     tasks,
     loading,
     notice,
-
-    // modal/editing
     modalOpen,
     editingTask,
     openCreate,
     closeForm,
-
-    // actions
     handleEdit,
     handleDelete,
     handleComplete,
     handleSubmit,
+    refreshTasks,
   } = useTasks();
 
-  /**
-   * Maps TaskResponse -> TaskRequest for edit mode.
-   */
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | undefined>(undefined);
+
+  const openDetails = (id: number) => {
+    setSelectedTaskId(id);
+    setDetailsOpen(true);
+  };
+
+  const closeDetails = () => {
+    setDetailsOpen(false);
+    setSelectedTaskId(undefined);
+  };
+
+  // Convert API response shape into form shape.
   const toTaskRequest = (task: TaskResponse | null): TaskRequest | undefined => {
     if (!task) return undefined;
+
     return {
       title: task.title ?? '',
       description: task.description ?? '',
-      priority: task.priority as 'HIGH' | 'MODERATE' | 'LOW' | undefined,
-      status: task.status as 'PENDING' | 'COMPLETED' | undefined,
+      priority: task.priority,
+      status: task.status,
       deadline: task.deadline,
     };
   };
 
-  /**
-   * Footer stats (current tasks list).
-   */
-  const stats = useMemo(() => {
-    const completed = tasks.filter((t) => t.status === 'COMPLETED').length;
-    const pending = tasks.filter((t) => t.status === 'PENDING').length;
+  // Small footer summary for reporting.
+  const taskSummary = useMemo(() => {
+    const completed = tasks.filter((task) => task.status === 'COMPLETED').length;
+    const pending = tasks.filter((task) => task.status === 'PENDING').length;
 
     return {
       total: tasks.length,
@@ -68,52 +74,37 @@ const TasksPage: React.FC = () => {
   }, [tasks]);
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-      <Content style={{ padding: 16 }}>
+    <Layout style={{ height: '100vh', background: '#f5f5f5', overflow: 'hidden' }}>
+      <Content style={{ padding: 16, height: '100%', overflow: 'hidden' }}>
         <Card variant="borderless" styles={{ body: { padding: 16 } }}>
-          <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            {/* Centered header */}
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <div style={{ textAlign: 'center' }}>
               <Title level={2} style={{ margin: 0 }}>
                 Task Manager
               </Title>
-              <Text type="secondary">Manage your tasks efficiently and effectively</Text>
+              <Text type="secondary">Project Demo</Text>
             </div>
 
-            {/* Action row */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: 12,
-                flexWrap: 'wrap',
-              }}
-            >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+              <Link to="/tasks/deleted">
+                <Button size="large">View Deleted Tasks</Button>
+              </Link>
               <Button type="primary" size="large" onClick={openCreate}>
                 Create Task
               </Button>
             </div>
 
-            {/* Notice */}
-            {notice && (
-              <Alert
-                type="info"
-                showIcon
-                icon={<InfoCircleOutlined />}
-                message={notice}
-              />
-            )}
+            {notice && <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={notice} />}
 
-            {/* Table with client-side sorting + pagination + search */}
             <TaskTable
               tasks={tasks}
               loading={loading}
-              onDelete={handleDelete}
               onEdit={handleEdit}
+              onDelete={handleDelete}
               onComplete={handleComplete}
+              onView={openDetails}
             />
 
-            {/* Footer stats */}
             <div
               style={{
                 display: 'flex',
@@ -125,24 +116,35 @@ const TasksPage: React.FC = () => {
               }}
             >
               <Text type="secondary">
-                Total tasks: <Text strong>{stats.total}</Text>
+                Total tasks: <Text strong>{taskSummary.total}</Text>
               </Text>
               <Text type="secondary">
-                Completed: <Text strong>{stats.completed}</Text>
+                Completed: <Text strong>{taskSummary.completed}</Text>
               </Text>
               <Text type="secondary">
-                Pending: <Text strong>{stats.pending}</Text>
+                Pending: <Text strong>{taskSummary.pending}</Text>
               </Text>
             </div>
           </Space>
         </Card>
 
-        {/* Modal controlled by hook */}
         <TaskFormModal
           open={modalOpen}
           onClose={closeForm}
           onSubmit={handleSubmit}
           initialValues={toTaskRequest(editingTask)}
+        />
+
+        <TaskDetailsModal
+          open={detailsOpen}
+          taskId={selectedTaskId}
+          onClose={closeDetails}
+          onDeleted={() => {
+            void refreshTasks();
+          }}
+          onUpdated={() => {
+            void refreshTasks();
+          }}
         />
       </Content>
     </Layout>

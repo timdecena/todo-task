@@ -27,6 +27,7 @@ public class TaskServiceImpl implements TaskService {
 
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("deadline", "priority", "status", "dateCreated");
 
     /**
      * Creates a new task.
@@ -54,24 +55,18 @@ public class TaskServiceImpl implements TaskService {
      * @param size page size
      * @return list of active tasks
      */
-    @Override
-    @Transactional(readOnly = true)
-    public List<TaskResponse> getAllTasks(int page, int size, String sortBy, String sortDir) {
-        // allowlist: prevents sorting by random fields (security + stability)
-        Set<String> allowedSortFields = Set.of("deadline", "priority", "status", "dateCreated");
+    
 
-        String safeSortBy = allowedSortFields.contains(sortBy) ? sortBy : "dateCreated";
+@Override
+@Transactional(readOnly = true)
+public List<TaskResponse> getAllTasks(int page, int size, String sortBy, String sortDir) {
+    String safeSortBy = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "dateCreated";
+    Sort.Direction dir = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
 
-        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, safeSortBy));
-
-        return taskRepository.findByDeletedFalse(pageable)
-                .map(taskMapper::toResponse)
-                .getContent();
-    }
+    return taskRepository.findByDeletedFalse(PageRequest.of(page, size, Sort.by(dir, safeSortBy)))
+            .map(taskMapper::toResponse)
+            .getContent();
+}
 
     /**
      * Retrieves a single active task by ID.
