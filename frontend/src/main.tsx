@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { ConfigProvider, theme } from 'antd';
 import App from './App';
 import './index.css';
+import { BRANDING } from './config/branding';
 
 /*
   This file is the frontend entry point that renders the React app into the root DOM element.
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ConfigProvider
       theme={{
         token: {
+          colorPrimary: BRANDING.primaryColor,
           // Slightly bigger defaults so the app is easy to read.
           fontSize: 18,
           borderRadius: 12,

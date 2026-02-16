@@ -11,6 +11,7 @@ import com.decena.task.Dto.TaskResponse;
 import com.decena.task.Entity.Task;
 import com.decena.task.Exception.ResourceNotFoundException;
 import com.decena.task.Repository.TaskRepository;
+import com.decena.task.Service.ServiceImpl.RecurrenceService;
 import com.decena.task.Service.ServiceImpl.TaskServiceImpl;
 import com.decena.task.Mapper.TaskMapper;
 
@@ -31,7 +32,7 @@ public class TaskServiceTest {
 
     @BeforeEach
     void setup() {
-        taskService = new TaskServiceImpl(taskRepository, taskMapper);
+        taskService = new TaskServiceImpl(taskRepository, taskMapper, new RecurrenceService());
     }
 
     @Test

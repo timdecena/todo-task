@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TaskResponse } from '../../types/task';
 import { getDeletedTasks } from '../../services/tasks/taskApi';
 
@@ -7,6 +7,7 @@ import { getDeletedTasks } from '../../services/tasks/taskApi';
   It reuses the same paging pattern as active tasks so behavior stays predictable.
 */
 const PAGE_SIZE = 100;
+const MAX_PAGES = 1000;
 
 const readErrorMessage = (error: unknown, fallback: string): string => {
   if (typeof error === 'object' && error && 'message' in error) {
@@ -20,6 +21,7 @@ const useDeletedTasks = () => {
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [notice, setNotice] = useState<string>('');
+  const fetchVersionRef = useRef(0);
 
   // Show a short message.
   const showNotice = (msg: string): void => {
@@ -29,26 +31,49 @@ const useDeletedTasks = () => {
 
   // Pull all deleted rows from backend pages.
   const fetchDeletedTasks = useCallback(async (): Promise<void> => {
+    const fetchVersion = ++fetchVersionRef.current;
     setLoading(true);
-    try {
-      const rows: TaskResponse[] = [];
-      let page = 0;
+    let loadingReleased = false;
 
-      while (true) {
+    const isStale = (): boolean => fetchVersion !== fetchVersionRef.current;
+
+    try {
+      const firstPage = await getDeletedTasks({ page: 0, size: PAGE_SIZE });
+      if (isStale()) return;
+
+      const rows: TaskResponse[] = [...firstPage];
+      setTasks(rows);
+      setLoading(false);
+      loadingReleased = true;
+
+      if (firstPage.length < PAGE_SIZE) return;
+
+      let page = 1;
+      while (page <= MAX_PAGES) {
         const data = await getDeletedTasks({ page, size: PAGE_SIZE });
+
+        if (isStale()) return;
+        if (!data.length) break;
+
         rows.push(...data);
+
+        if (page % 2 === 0 || data.length < PAGE_SIZE) {
+          setTasks([...rows]);
+        }
 
         if (data.length < PAGE_SIZE) break;
         page += 1;
-        if (page > 1000) break;
       }
-
-      setTasks(rows);
     } catch (error: unknown) {
-      setTasks([]);
+      if (isStale()) return;
+      if (!loadingReleased) {
+        setTasks([]);
+      }
       showNotice(readErrorMessage(error, 'Failed to load deleted tasks'));
     } finally {
-      setLoading(false);
+      if (!isStale() && !loadingReleased) {
+        setLoading(false);
+      }
     }
   }, []);
 

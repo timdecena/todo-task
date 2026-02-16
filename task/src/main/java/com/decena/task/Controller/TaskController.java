@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.decena.task.Dto.TaskRequest;
 import com.decena.task.Dto.TaskResponse;
+import com.decena.task.Dto.TaskStatusUpdateRequest;
+import com.decena.task.Dto.TaskBoardReorderRequest;
 import com.decena.task.Service.TaskService;
 
 import jakarta.validation.Valid;
@@ -89,6 +91,19 @@ public ResponseEntity<List<TaskResponse>> getAllTasks(
 }
 
     /**
+     * Restores a previously soft-deleted task.
+     *
+     * @param id task ID
+     * @return restored task
+     * @throws com.decena.task.Exception.ResourceNotFoundException when task is missing
+     * @throws IllegalArgumentException when task is not deleted
+     */
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<TaskResponse> restoreTask(@PathVariable Long id) {
+        return ResponseEntity.ok(taskService.restoreTask(id));
+    }
+
+    /**
      * Marks a task as completed.
      */
     @PatchMapping("/{id}/complete")
@@ -96,6 +111,40 @@ public ResponseEntity<List<TaskResponse>> getAllTasks(
         return ResponseEntity.ok(
                 taskService.markTaskAsCompleted(id)
         );
+    }
+
+    /**
+     * Updates one task status for Kanban board movement.
+     *
+     * @param id task ID
+     * @param request status update payload
+     * @return updated task response
+     * @throws com.decena.task.Exception.ResourceNotFoundException when task does not exist
+     * @throws IllegalArgumentException when status is invalid
+     */
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<TaskResponse> updateTaskStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody TaskStatusUpdateRequest request) {
+        return ResponseEntity.ok(taskService.updateTaskStatus(id, request));
+    }
+
+    /**
+     * Reorders tasks inside one Kanban status column.
+     *
+     * @param request reorder payload
+     * @return success response map
+     * @throws IllegalArgumentException when payload is invalid
+     */
+    @PatchMapping("/board/reorder")
+    public ResponseEntity<Map<String, Object>> reorderBoard(
+            @Valid @RequestBody TaskBoardReorderRequest request) {
+        taskService.reorderBoard(request);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", HttpStatus.OK.value());
+        response.put("message", "Board reordered successfully");
+        return ResponseEntity.ok(response);
     }
 
     /**

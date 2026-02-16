@@ -26,8 +26,23 @@ public class TaskRequest {
     // Optional: defaults to LOW if null
     private String priority; // HIGH, MODERATE, LOW
 
-    // Optional: defaults to PENDING if null
-    private String status; // PENDING, COMPLETED
+    // Optional: defaults to TODO if null
+    private String status; // TODO, IN_PROGRESS, DONE
+
+    // Optional board order used for Kanban column ordering.
+    private Long boardOrder;
+
+    // Optional recurrence type. Defaults to NONE.
+    private String recurrenceType; // NONE, DAILY, WEEKLY, MONTHLY
+
+    // Optional recurrence interval. Defaults to 1.
+    private Integer recurrenceInterval;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime recurrenceEndAt;
+
+    // Optional group identifier for recurring series.
+    private String recurrenceGroupId;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime deadline;

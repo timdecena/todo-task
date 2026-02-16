@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { DatePicker, Form, Input, Modal, Select } from 'antd';
+import { DatePicker, Form, Input, Modal, Select, Typography } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import type { TaskRequest } from '../../types/task';
 
@@ -19,13 +19,18 @@ type FormValues = {
   description?: string;
   priority?: TaskRequest['priority'];
   status?: TaskRequest['status'];
-  deadline: Dayjs;
+  recurrenceType?: TaskRequest['recurrenceType'];
+  recurrenceInterval?: number;
+  recurrenceEndAt?: Dayjs;
+  deadline?: Dayjs;
 };
 
 // This modal handles both Create and Edit.
 // If `initialValues` exists, we are editing.
 const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues }) => {
   const [form] = Form.useForm<FormValues>();
+  const isDoneTask =
+    !!initialValues && (initialValues.status === 'DONE' || initialValues.status === 'COMPLETED');
 
   // Fill the form every time modal opens.
   useEffect(() => {
@@ -37,18 +42,24 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
         description: initialValues.description ?? '',
         priority: initialValues.priority,
         status: initialValues.status,
+        recurrenceType: initialValues.recurrenceType ?? 'NONE',
+        recurrenceInterval: initialValues.recurrenceInterval ?? 1,
+        recurrenceEndAt: initialValues.recurrenceEndAt
+          ? dayjs(initialValues.recurrenceEndAt).second(0).millisecond(0)
+          : undefined,
         deadline: initialValues.deadline
           ? dayjs(initialValues.deadline).second(0).millisecond(0)
-          : dayjs().add(1, 'hour').second(0).millisecond(0),
+          : undefined,
       });
     } else {
       form.resetFields();
       form.setFieldsValue({
         // sensible defaults (optional fields)
         priority: 'LOW',
-        status: 'PENDING',
-        // default deadline is 1 hour ahead
-        deadline: dayjs().add(1, 'hour').second(0).millisecond(0),
+        status: 'TODO',
+        recurrenceType: 'NONE',
+        recurrenceInterval: 1,
+        deadline: undefined,
       });
     }
   }, [open, initialValues, form]);
@@ -61,8 +72,19 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
       title: values.title.trim(),
       description: values.description?.trim() || '',
       priority: values.priority,
-      status: values.status,
-      deadline: values.deadline.second(0).millisecond(0).format('YYYY-MM-DDTHH:mm:ss'),
+      status: isDoneTask ? initialValues?.status : values.status,
+      recurrenceType: values.recurrenceType ?? 'NONE',
+      recurrenceInterval:
+        values.recurrenceType && values.recurrenceType !== 'NONE'
+          ? Math.max(values.recurrenceInterval ?? 1, 1)
+          : 1,
+      recurrenceEndAt:
+        values.recurrenceType && values.recurrenceType !== 'NONE' && values.recurrenceEndAt
+          ? values.recurrenceEndAt.second(0).millisecond(0).format('YYYY-MM-DDTHH:mm:ss')
+          : undefined,
+      deadline: values.deadline
+        ? values.deadline.second(0).millisecond(0).format('YYYY-MM-DDTHH:mm:ss')
+        : undefined,
     };
 
     onSubmit(payload);
@@ -74,9 +96,18 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
     return current.isBefore(dayjs().startOf('day'));
   };
 
-  // User must choose a time after "now".
+  // Deadline is optional, but if set it must be in the future.
+  // If recurrence is enabled, deadline becomes required.
   const validateFutureDeadline = async (_: unknown, value?: Dayjs): Promise<void> => {
-    if (!value) throw new Error('Please select deadline');
+    const recurrenceType = form.getFieldValue('recurrenceType');
+    const recurring = recurrenceType && recurrenceType !== 'NONE';
+
+    if (!value) {
+      if (recurring) {
+        throw new Error('Please select deadline for recurring task');
+      }
+      return;
+    }
     if (!value.isAfter(dayjs())) throw new Error('Deadline must be in the future');
   };
 
@@ -114,15 +145,58 @@ const TaskFormModal: React.FC<Props> = ({ open, onClose, onSubmit, initialValues
           />
         </Form.Item>
 
-        <Form.Item label="Status" name="status">
+        {!isDoneTask ? (
+          <Form.Item label="Status" name="status">
+            <Select
+              placeholder="Select status (optional)"
+              allowClear
+              options={[
+                { value: 'TODO', label: 'Todo' },
+                { value: 'IN_PROGRESS', label: 'In Progress' },
+                { value: 'DONE', label: 'Done' },
+              ]}
+            />
+          </Form.Item>
+        ) : (
+          <Form.Item label="Status">
+            <Typography.Text type="secondary">Done (locked)</Typography.Text>
+          </Form.Item>
+        )}
+
+        <Form.Item label="Recurrence" name="recurrenceType">
           <Select
-            placeholder="Select status (optional)"
-            allowClear
             options={[
-              { value: 'PENDING', label: 'Pending' },
-              { value: 'COMPLETED', label: 'Completed' },
+              { value: 'NONE', label: 'None' },
+              { value: 'DAILY', label: 'Daily' },
+              { value: 'WEEKLY', label: 'Weekly' },
+              { value: 'MONTHLY', label: 'Monthly' },
             ]}
           />
+        </Form.Item>
+
+        <Form.Item noStyle shouldUpdate={(prev, curr) => prev.recurrenceType !== curr.recurrenceType}>
+          {({ getFieldValue }) =>
+            getFieldValue('recurrenceType') && getFieldValue('recurrenceType') !== 'NONE' ? (
+              <>
+                <Form.Item
+                  label="Recurrence Interval"
+                  name="recurrenceInterval"
+                  rules={[{ required: true, message: 'Please set recurrence interval' }]}
+                >
+                  <Input type="number" min={1} placeholder="Every 1 cycle" />
+                </Form.Item>
+
+                <Form.Item label="Recurrence End (Optional)" name="recurrenceEndAt">
+                  <DatePicker
+                    showTime={{ format: 'HH:mm', minuteStep: 1, showSecond: false }}
+                    format="YYYY-MM-DD HH:mm"
+                    className="w-full"
+                    disabledDate={disabledDate}
+                  />
+                </Form.Item>
+              </>
+            ) : null
+          }
         </Form.Item>
 
         <Form.Item

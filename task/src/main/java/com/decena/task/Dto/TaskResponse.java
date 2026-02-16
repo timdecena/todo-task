@@ -19,7 +19,14 @@ public class TaskResponse {
     private String title;
     private String description;
     private String priority; // HIGH, MODERATE, LOW
-    private String status;   // PENDING, COMPLETED
+    private String status;   // TODO, IN_PROGRESS, DONE
+    private Long boardOrder;
+    private String recurrenceType; // NONE, DAILY, WEEKLY, MONTHLY
+    private Integer recurrenceInterval;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime recurrenceEndAt;
+    private String recurrenceGroupId;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime deadline;

@@ -1,5 +1,10 @@
 import httpClient from '../http/httpClient';
-import { TaskRequest, TaskResponse } from '../../types/task';
+import {
+  TaskRequest,
+  TaskResponse,
+  TaskStatusUpdateRequest,
+  TaskBoardReorderRequest,
+} from '../../types/task';
 
 /*
   This file contains all task-related API calls used by the frontend.
@@ -50,9 +55,48 @@ export const deleteTask = async (id: number): Promise<void> => {
   await httpClient.delete(`${TASKS_URL}/${id}`);
 };
 
+/**
+ * Restores a previously deleted task.
+ *
+ * @param id task id
+ * @returns restored task response
+ * @throws AxiosError when backend returns an error
+ */
+export const restoreTask = async (id: number): Promise<TaskResponse> => {
+  const response = await httpClient.post<TaskResponse>(`${TASKS_URL}/${id}/restore`);
+  return response.data;
+};
+
 // Mark task complete.
 export const markTaskAsCompleted = async (id: number): Promise<TaskResponse> => {
   const response = await httpClient.patch<TaskResponse>(`${TASKS_URL}/${id}/complete`);
+  return response.data;
+};
+
+/**
+ * Updates one task status (Kanban move).
+ *
+ * @param id task id
+ * @param payload target status and optional board order
+ * @returns updated task response
+ * @throws AxiosError when backend returns an error
+ */
+export const patchTaskStatus = async (id: number, payload: TaskStatusUpdateRequest): Promise<TaskResponse> => {
+  const response = await httpClient.patch<TaskResponse>(`${TASKS_URL}/${id}/status`, payload);
+  return response.data;
+};
+
+/**
+ * Reorders tasks inside one Kanban column.
+ *
+ * @param payload status and ordered task IDs
+ * @returns API success payload
+ * @throws AxiosError when payload is invalid
+ */
+export const reorderBoardColumn = async (
+  payload: TaskBoardReorderRequest,
+): Promise<{ status: number; message: string }> => {
+  const response = await httpClient.patch<{ status: number; message: string }>(`${TASKS_URL}/board/reorder`, payload);
   return response.data;
 };
 

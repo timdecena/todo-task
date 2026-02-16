@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Button, DatePicker, Input, Popconfirm, Select, Space, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { EyeOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import type { TaskResponse } from '../../types/task';
+import useDebouncedValue from '../../hooks/useDebouncedValue';
 
 /*
   This component renders the active task list with table actions and filters.
@@ -16,6 +17,12 @@ type Props = {
   onDelete: (id: number) => void;
   onComplete: (id: number) => void;
   onView: (id: number) => void;
+};
+
+type IndexedTask = {
+  task: TaskResponse;
+  searchBlob: string;
+  deadlineTs: number | null;
 };
 
 const priorityOrder: Record<string, number> = {
@@ -49,30 +56,46 @@ const truncateText = (text: string | undefined, maxLength: number): string => {
 // Main table for active tasks.
 // It includes search, sort, and page controls.
 const TaskTable = ({ tasks, loading, onEdit, onDelete, onComplete, onView }: Props) => {
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const search = useDebouncedValue(searchInput, 220);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [deadlineRange, setDeadlineRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [deadlineQuickFilter, setDeadlineQuickFilter] = useState<'ALL' | '1' | '7' | '14'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'COMPLETED' | 'PENDING'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'TODO' | 'IN_PROGRESS' | 'DONE'>('ALL');
 
   // Go back to first page when search text changes.
   useEffect(() => {
     setPage(1);
   }, [search, deadlineRange, deadlineQuickFilter, statusFilter]);
 
+  const indexedTasks = useMemo<IndexedTask[]>(() => {
+    return tasks.map((task) => ({
+      task,
+      searchBlob: [task.title, task.description, task.priority, task.status]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase(),
+      deadlineTs: task.deadline ? dayjs(task.deadline).valueOf() : null,
+    }));
+  }, [tasks]);
+
   // Filter rows by free-text search.
   const filteredTasks = useMemo(() => {
     const keyword = search.trim().toLowerCase();
+    const nowTs = dayjs().valueOf();
+    const quickFilterEndTs =
+      deadlineQuickFilter === 'ALL'
+        ? null
+        : dayjs().add(Number(deadlineQuickFilter), 'day').endOf('day').valueOf();
+    const rangeStartTs =
+      deadlineRange && deadlineRange[0] ? deadlineRange[0].startOf('day').valueOf() : null;
+    const rangeEndTs =
+      deadlineRange && deadlineRange[1] ? deadlineRange[1].endOf('day').valueOf() : null;
 
-    const rows = tasks.filter((task) => {
+    const rows = indexedTasks.filter(({ task, searchBlob, deadlineTs }) => {
       if (keyword) {
-        const joinedText = [task.title, task.description, task.priority, task.status]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-
-        const textMatch = joinedText.includes(keyword);
+        const textMatch = searchBlob.includes(keyword);
         if (!textMatch) return false;
       }
 
@@ -80,51 +103,61 @@ const TaskTable = ({ tasks, loading, onEdit, onDelete, onComplete, onView }: Pro
         return false;
       }
 
-      if (!deadlineRange || !deadlineRange[0] || !deadlineRange[1]) {
-        // continue to quick filter check
-      } else {
-        if (!task.deadline) return false;
-
-        const deadline = dayjs(task.deadline);
-        const start = deadlineRange[0].startOf('day');
-        const end = deadlineRange[1].endOf('day');
-
-        const isInsideRange = !deadline.isBefore(start) && !deadline.isAfter(end);
-        if (!isInsideRange) return false;
+      if (rangeStartTs !== null && rangeEndTs !== null) {
+        if (deadlineTs === null) return false;
+        if (deadlineTs < rangeStartTs || deadlineTs > rangeEndTs) {
+          return false;
+        }
       }
 
       if (deadlineQuickFilter === 'ALL') return true;
-      if (!task.deadline) return false;
+      if (deadlineTs === null || quickFilterEndTs === null) return false;
 
-      const deadline = dayjs(task.deadline);
-      const now = dayjs();
-      const end = dayjs().add(Number(deadlineQuickFilter), 'day').endOf('day');
-
-      return !deadline.isBefore(now) && !deadline.isAfter(end);
+      return deadlineTs >= nowTs && deadlineTs <= quickFilterEndTs;
     });
-    return rows.sort((a, b) => {
+
+    return rows
+      .map(({ task }) => task)
+      .sort((a, b) => {
       const aDeadline = a.deadline ? dayjs(a.deadline).valueOf() : Number.MAX_SAFE_INTEGER;
       const bDeadline = b.deadline ? dayjs(b.deadline).valueOf() : Number.MAX_SAFE_INTEGER;
       return aDeadline - bDeadline;
     });
-  }, [search, tasks, deadlineRange, deadlineQuickFilter, statusFilter]);
+  }, [search, indexedTasks, deadlineRange, deadlineQuickFilter, statusFilter]);
 
   const columns: ColumnsType<TaskResponse> = [
     {
       title: 'Title',
       dataIndex: 'title',
       sorter: (a, b) => (a.title ?? '').localeCompare(b.title ?? ''),
-      render: (value?: string) => <div>{truncateText(value, 40)}</div>,
+      ellipsis: true,
+      render: (value?: string) => (
+        <div
+          title={value}
+          style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        >
+          {truncateText(value, 50)}
+        </div>
+      ),
     },
     {
       title: 'Description',
       dataIndex: 'description',
-      render: (value?: string) => <div>{truncateText(value, 80)}</div>,
+      ellipsis: true,
+      render: (value?: string) => (
+        <div
+          title={value}
+          style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        >
+          {truncateText(value, 80)}
+        </div>
+      ),
     },
     {
       title: 'Priority',
       dataIndex: 'priority',
-      width: 140,
+      width: 120,
+      align: 'center',
       filters: [
         { text: 'HIGH', value: 'HIGH' },
         { text: 'MODERATE', value: 'MODERATE' },
@@ -132,33 +165,50 @@ const TaskTable = ({ tasks, loading, onEdit, onDelete, onComplete, onView }: Pro
       ],
       onFilter: (value, record) => (record.priority ?? '') === value,
       sorter: (a, b) => getPriorityValue(a.priority) - getPriorityValue(b.priority),
-      render: (value?: string) => (value ? <Tag>{value}</Tag> : '-'),
+      render: (value?: string) =>
+        value ? (
+          <Tag style={{ marginInlineEnd: 0, fontSize: 13, lineHeight: '18px' }}>{value}</Tag>
+        ) : (
+          '-'
+        ),
     },
     {
       title: 'Status',
       dataIndex: 'status',
-      width: 140,
-      render: (value?: string) => (value ? <Tag>{value}</Tag> : '-'),
+      width: 120,
+      align: 'center',
+      render: (value?: string) =>
+        value ? (
+          <Tag style={{ marginInlineEnd: 0, fontSize: 13, lineHeight: '18px' }}>{value}</Tag>
+        ) : (
+          '-'
+        ),
     },
     {
       title: 'Deadline',
       dataIndex: 'deadline',
-      width: 220,
+      width: 190,
+      align: 'center',
       render: (value?: string) => {
         if (!value) return '-';
-        return <Tag color={getDeadlineColor(value)}>{dayjs(value).format('MMM DD, YYYY hh:mm A')}</Tag>;
+        return (
+          <Tag style={{ marginInlineEnd: 0, fontSize: 13, lineHeight: '18px' }} color={getDeadlineColor(value)}>
+            {dayjs(value).format('MMM DD, YYYY hh:mm A')}
+          </Tag>
+        );
       },
     },
     {
       title: 'Actions',
       key: 'actions',
-      width: 280,
+      width: 240,
+      align: 'center',
       render: (_, row) => (
-        <Space>
-          <Button icon={<EyeOutlined />} onClick={() => onView(row.id)}>
+        <Space wrap size="small">
+          <Button size="small" icon={<EyeOutlined />} onClick={() => onView(row.id)}>
             View
           </Button>
-          <Button onClick={() => onEdit(row)}>Edit</Button>
+          <Button size="small" onClick={() => onEdit(row)}>Edit</Button>
           <Popconfirm
             title="Delete this task?"
             description="Are you sure you want to delete this task?"
@@ -166,9 +216,14 @@ const TaskTable = ({ tasks, loading, onEdit, onDelete, onComplete, onView }: Pro
             okButtonProps={{ danger: true }}
             onConfirm={() => onDelete(row.id)}
           >
-            <Button danger>Delete</Button>
+            <Button size="small" danger>Delete</Button>
           </Popconfirm>
-          <Button type="primary" disabled={row.status === 'COMPLETED'} onClick={() => onComplete(row.id)}>
+          <Button
+            size="small"
+            type="primary"
+            disabled={row.status === 'DONE' || row.status === 'COMPLETED'}
+            onClick={() => onComplete(row.id)}
+          >
             Complete
           </Button>
         </Space>
@@ -182,9 +237,9 @@ const TaskTable = ({ tasks, loading, onEdit, onDelete, onComplete, onView }: Pro
         <Input.Search
           placeholder="Search title, description, status, priority"
           allowClear
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onSearch={(value) => setSearch(value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onSearch={(value) => setSearchInput(value)}
           style={{ width: 320 }}
         />
         <DatePicker.RangePicker
@@ -199,8 +254,9 @@ const TaskTable = ({ tasks, loading, onEdit, onDelete, onComplete, onView }: Pro
           style={{ width: 170 }}
           options={[
             { value: 'ALL', label: 'Status' },
-            { value: 'COMPLETED', label: 'Completed' },
-            { value: 'PENDING', label: 'Pending' },
+            { value: 'TODO', label: 'Todo' },
+            { value: 'IN_PROGRESS', label: 'In Progress' },
+            { value: 'DONE', label: 'Done' },
           ]}
         />
         <Select
@@ -233,11 +289,27 @@ const TaskTable = ({ tasks, loading, onEdit, onDelete, onComplete, onView }: Pro
           setPage(pagination.current ?? 1);
           setPageSize(pagination.pageSize ?? 10);
         }}
-        scroll={{ x: true, y: 'calc(100vh - 430px)' }}
-        locale={{ emptyText: 'No tasks found.' }}
+        scroll={{ y: 'calc(100vh - 430px)' }}
+        tableLayout="fixed"
+        size="middle"
+        style={{ fontSize: 15 }}
+        locale={{
+          emptyText: (
+            <div
+              style={{
+                minHeight: 'calc(100vh - 560px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              No tasks found.
+            </div>
+          ),
+        }}
       />
     </>
   );
 };
 
-export default TaskTable;
+export default memo(TaskTable);

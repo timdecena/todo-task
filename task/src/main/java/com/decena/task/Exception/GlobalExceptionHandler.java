@@ -86,7 +86,9 @@ public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgument
         if (message != null && message.contains("priority")) {
             message = "Invalid priority value. Allowed values: HIGH, MODERATE, LOW";
         } else if (message != null && message.contains("status")) {
-            message = "Invalid status value. Allowed values: PENDING, COMPLETED";
+            message = "Invalid status value. Allowed values: TODO, IN_PROGRESS, DONE";
+        } else if (message != null && message.contains("RecurrenceType")) {
+            message = "Invalid recurrence type. Allowed values: NONE, DAILY, WEEKLY, MONTHLY";
         }
         return buildResponse(HttpStatus.BAD_REQUEST, "Invalid Request", message);
     }

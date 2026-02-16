@@ -3,7 +3,8 @@
   Using these types helps catch mistakes early and keeps components consistent.
 */
 export type TaskPriority = 'HIGH' | 'MODERATE' | 'LOW';
-export type TaskStatus = 'PENDING' | 'COMPLETED';
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'PENDING' | 'COMPLETED';
+export type RecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
 // Data we send to the backend when creating/updating a task.
 export type TaskRequest = {
@@ -11,6 +12,11 @@ export type TaskRequest = {
   description?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
+  boardOrder?: number;
+  recurrenceType?: RecurrenceType;
+  recurrenceInterval?: number;
+  recurrenceEndAt?: string;
+  recurrenceGroupId?: string;
   deadline?: string; // ISO local date-time string
 };
 
@@ -21,6 +27,27 @@ export type TaskResponse = {
   description?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
+  boardOrder?: number;
+  recurrenceType?: RecurrenceType;
+  recurrenceInterval?: number;
+  recurrenceEndAt?: string;
+  recurrenceGroupId?: string;
   deadline?: string;
   dateCreated?: string;
+};
+
+/**
+ * Payload for updating one task Kanban status.
+ */
+export type TaskStatusUpdateRequest = {
+  status: TaskStatus;
+  boardOrder?: number;
+};
+
+/**
+ * Payload for reordering one Kanban status column.
+ */
+export type TaskBoardReorderRequest = {
+  status: TaskStatus;
+  orderedTaskIds: number[];
 };

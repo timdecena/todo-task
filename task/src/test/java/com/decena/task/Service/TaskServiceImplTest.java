@@ -19,6 +19,7 @@ import com.decena.task.Entity.Task;
 import com.decena.task.Exception.ResourceNotFoundException;
 import com.decena.task.Mapper.TaskMapper;
 import com.decena.task.Repository.TaskRepository;
+import com.decena.task.Service.ServiceImpl.RecurrenceService;
 import com.decena.task.Service.ServiceImpl.TaskServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +30,9 @@ class TaskServiceImplTest {
 
     @Mock
     private TaskMapper taskMapper;
+
+    @Mock
+    private RecurrenceService recurrenceService;
 
     @InjectMocks
     private TaskServiceImpl taskService;
@@ -161,7 +165,7 @@ class TaskServiceImplTest {
 
         TaskResponse response = TaskResponse.builder()
                 .id(1L)
-                .status("COMPLETED")
+                .status("DONE")
                 .build();
 
         when(taskRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(task));
@@ -170,7 +174,7 @@ class TaskServiceImplTest {
 
         TaskResponse result = taskService.markTaskAsCompleted(1L);
 
-        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(result.getStatus()).isEqualTo("DONE");
         verify(taskRepository).save(task);
     }
 

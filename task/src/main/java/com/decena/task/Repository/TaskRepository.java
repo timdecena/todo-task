@@ -1,6 +1,7 @@
 package com.decena.task.Repository;
 
 import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,30 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      * Fetch all non-deleted tasks with pagination.
      */
     Page<Task> findByDeletedFalse(Pageable pageable);
+
+    /**
+     * Fetch all active tasks by status, sorted by board order.
+     *
+     * @param status target task status
+     * @return ordered list of active tasks
+     */
+    List<Task> findByDeletedFalseAndStatusOrderByBoardOrderAscIdAsc(Task.Status status);
+
+    /**
+     * Fetch active tasks by IDs.
+     *
+     * @param ids task IDs
+     * @return matching active tasks
+     */
+    List<Task> findByIdInAndDeletedFalse(List<Long> ids);
+
+    /**
+     * Find the largest board order in one active column.
+     *
+     * @param status target status
+     * @return top ordered task if present
+     */
+    Optional<Task> findTopByDeletedFalseAndStatusOrderByBoardOrderDesc(Task.Status status);
 
 
     /**

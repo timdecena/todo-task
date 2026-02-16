@@ -12,13 +12,14 @@ type Props = {
   open: boolean;
   taskId?: number;
   onClose: () => void;
+  onDeleteTask?: (id: number) => Promise<void> | void;
   onDeleted?: () => void;
   onUpdated?: (task: TaskResponse) => void;
 };
 
 // Small modal used to view one task.
 // It can also complete or delete that task.
-const TaskDetailsModal = ({ open, taskId, onClose, onDeleted, onUpdated }: Props) => {
+const TaskDetailsModal = ({ open, taskId, onClose, onDeleteTask, onDeleted, onUpdated }: Props) => {
   const [task, setTask] = useState<TaskResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -70,7 +71,11 @@ const TaskDetailsModal = ({ open, taskId, onClose, onDeleted, onUpdated }: Props
 
     setLoading(true);
     try {
-      await deleteTask(taskId);
+      if (onDeleteTask) {
+        await onDeleteTask(taskId);
+      } else {
+        await deleteTask(taskId);
+      }
       onDeleted?.();
       message.success('Task deleted');
       closeModal();
@@ -123,7 +128,7 @@ const TaskDetailsModal = ({ open, taskId, onClose, onDeleted, onUpdated }: Props
             <Button
               type="primary"
               onClick={() => void completeTask()}
-              disabled={loading || task.status === 'COMPLETED'}
+              disabled={loading || task.status === 'DONE' || task.status === 'COMPLETED'}
               loading={loading}
             >
               Complete
