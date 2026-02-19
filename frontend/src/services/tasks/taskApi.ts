@@ -10,7 +10,7 @@ import {
   This file contains all task-related API calls used by the frontend.
   Each function maps a frontend action (create, read, update, delete, complete) to a backend endpoint.
 */
-const TASKS_URL = '/api/tasks';
+const TASKS_URL = '/tasks';
 export type TaskSortField = 'deadline' | 'priority' | 'status' | 'dateCreated';
 export type SortDir = 'asc' | 'desc';
 

@@ -7,7 +7,7 @@ import axios from 'axios';
 // One axios client for the whole app.
 // Change this baseURL when backend URL changes.
 const httpClient = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: '/api',
 });
 
 export default httpClient;
