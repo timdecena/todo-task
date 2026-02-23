@@ -38,8 +38,10 @@ public class SecurityConfig {
             .filter(origin -> !origin.isEmpty())
             .collect(Collectors.toList());
 
-        config.setAllowedOrigins(origins);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
+        // Allow localhost/127.0.0.1 with dynamic ports (for Minikube service URLs)
+        // by using origin patterns instead of exact origin matching.
+        config.setAllowedOriginPatterns(origins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

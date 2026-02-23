@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: task-app-config
+  namespace: task-app
+data:
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: task_db
+  DB_USER: root
+  # Safe defaults for local demo. Update this before demo if using a Minikube IP URL.
+  APP_CORS_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*,http://localhost,http://127.0.0.1

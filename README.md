@@ -366,10 +366,12 @@ Database settings are in:
 
 - `task/src/main/resources/application.properties`
 
-You are using environment variables for DB:
+You are using environment variables for DB (current setup):
 
-- `DB_URL`
-- `DB_USERNAME`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USER`
 - `DB_PASSWORD`
 
 This is better than hardcoding password in source code.
@@ -383,8 +385,10 @@ This is better than hardcoding password in source code.
 From `task/`:
 
 1. Set environment variables (PowerShell):
-   - `$env:DB_URL="jdbc:mysql://localhost:3306/task_db"`
-   - `$env:DB_USERNAME="root"`
+   - `$env:DB_HOST="localhost"`
+   - `$env:DB_PORT="3306"`
+   - `$env:DB_NAME="task_db"`
+   - `$env:DB_USER="root"`
    - `$env:DB_PASSWORD="your_password"`
 2. Run backend:
    - `./mvnw spring-boot:run`
@@ -492,3 +496,121 @@ During demo:
 
 If you follow this checklist, you already covered full CRUD plus extra features.
 
+---
+
+## 17. Docker + Kubernetes Report Flow (Layman Version)
+
+Use this section for your report and live explanation. It is written in simple terms.
+
+### 17.1 What I Did (Simple Summary)
+
+I first Dockerized the app so all parts can run in containers:
+
+- Frontend container
+- Backend container
+- MySQL container
+
+Then I deployed the same app in Kubernetes (Minikube) so Kubernetes manages:
+
+- starting the containers
+- connecting them together
+- restarting them if needed
+- exposing the frontend to the browser
+
+### 17.2 Why Docker First, Then Kubernetes
+
+- **Docker** solves packaging and consistent setup.
+- **Kubernetes** solves managing multiple containers in a structured way.
+
+Simple explanation:
+
+- Docker = puts the app into containers
+- Kubernetes = manages those containers as a system
+
+### 17.3 Docker Setup Flow (What Happens)
+
+1. Backend is built into an image using `task/Dockerfile`.
+2. Frontend is built into an image using `frontend/Dockerfile`.
+3. MySQL uses an official Docker image (`mysql:8.4`).
+4. `docker-compose.yml` runs all 3 together.
+5. Frontend calls `/api`, and Nginx forwards that to backend.
+
+Layman line to say:
+
+"Docker Compose is my one-button local setup for frontend, backend, and database."
+
+### 17.4 Kubernetes Setup Flow (What Happens)
+
+Kubernetes runs the same app, but each part is described using YAML files in `k8s/`.
+
+Main Kubernetes resources used:
+
+- `Deployment` -> runs and manages pods (frontend/backend/mysql)
+- `Service` -> gives stable network names (`frontend`, `backend`, `mysql`)
+- `Secret` -> stores MySQL password
+- `ConfigMap` -> stores app config (DB host, CORS, etc.)
+- `PersistentVolumeClaim` -> keeps MySQL data safe after pod restart
+- `Namespace` -> groups all resources under `task-app`
+
+Layman line to say:
+
+"Kubernetes is the manager. It keeps the app parts running and connected."
+
+### 17.5 End-to-End Runtime Flow (Browser to Database)
+
+This is the best flow to explain during your report:
+
+1. User opens frontend in browser (Minikube service URL).
+2. Frontend UI sends request to `/api/tasks`.
+3. Nginx in frontend container forwards `/api` request to backend service (`backend:8080`).
+4. Backend (Spring Boot) receives request and runs business logic.
+5. Backend connects to MySQL service (`mysql:3306`).
+6. MySQL stores or returns data.
+7. Backend sends response back to frontend.
+8. Frontend updates table and shows success/error feedback.
+
+Use this exact line:
+
+"The browser only talks to the frontend, and the frontend forwards API calls internally to the backend through Kubernetes networking."
+
+### 17.6 Deployment Flow for Kubernetes (Step-by-Step)
+
+1. Build and push Docker images to Docker Hub (`timpogi/task-backend:v1`, `timpogi/task-frontend:v1`).
+2. Start Minikube.
+3. Apply Kubernetes YAML files from `k8s/` in order.
+4. Wait for pods to become `Running`.
+5. Check services and PVC.
+6. Open frontend using `minikube service frontend -n task-app --url`.
+7. Test CRUD actions.
+
+### 17.7 What Problems Were Solved
+
+- No need to install Java, Node.js, and MySQL separately on every machine (Docker benefit)
+- Easier full-stack startup (`docker compose` or Kubernetes manifests)
+- Better structure for managing multiple app parts (Kubernetes benefit)
+- MySQL data is preserved using PVC
+- App is easier to demo and explain
+
+### 17.8 One Real Issue Encountered (Good for Report)
+
+Issue:
+
+- The frontend opened, but `POST /api/tasks` returned `403 Forbidden` in Kubernetes.
+
+Cause (simple):
+
+- Minikube service URL used a random localhost port (example: `127.0.0.1:53205`)
+- Backend CORS allowed only fixed ports
+
+Fix:
+
+- Updated backend CORS config to allow localhost/127.0.0.1 with dynamic ports using origin patterns
+- Rebuilt and redeployed backend image
+
+Why this is a good report point:
+
+- It shows real debugging and understanding of frontend-backend communication in Kubernetes
+
+### 17.9 Short Conclusion for Report
+
+The application was successfully Dockerized and then deployed in Kubernetes using Minikube. The frontend, backend, and MySQL database run as separate managed components, communicate through Kubernetes Services, and persist database data using a PersistentVolumeClaim. CRUD operations work successfully in both Docker Compose and Kubernetes setups.
